@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { adminservice } from "./admin.service";
 import { createadmindto } from "./admin.dto";
+import { FileInterceptor } from "@nestjs/platform-express";
+
 @Controller('admin')
 export class admincontroller {
     constructor(private readonly adminservice: adminservice){}
@@ -29,4 +31,10 @@ export class admincontroller {
     {
         return this.adminservice.getadmin(adminid);
     }
+    @Post('upload')
+@UseInterceptors(FileInterceptor('file'))
+uploadFile(@UploadedFile() file: Express.Multer.File) 
+{
+console.log(file.size);
+}
 }
