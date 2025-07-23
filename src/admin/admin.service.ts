@@ -25,4 +25,12 @@ export class adminservice {
     {
        return 'Admin id is' +adminid;
     }
+    addadmin(data: createadmindto): string
+    {
+        const {name, email, password} = data
+        console.log('Name :', name );
+        console.log('Email :', email);
+        //console.log('Password :', password);
+        return `Admin ${name} added with ${email}`;
+    }
 }
