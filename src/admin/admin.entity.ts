@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+/*import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity("admin")
 export class AdminEntity
@@ -12,3 +12,4 @@ export class AdminEntity
     @Column()
     password : string;
 }
+    */
