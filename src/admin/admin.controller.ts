@@ -201,20 +201,20 @@ uploadFile(@UploadedFile() file: Express.Multer.File)
 console.log(file.size);
 }
 */
-@Post('upload')
-@UseInterceptors(FileInterceptor('file',
-{ fileFilter: (req, file, cb) => {
-if (file.originalname.match(/^.*\.(|pdf|jpg|webp|png|jpeg)$/))
-cb(null, true);
-else {
-cb(new MulterError('LIMIT_UNEXPECTED_FILE', 'file'), false);
+  @Post('upload')
+ @UseInterceptors(FileInterceptor('file',
+  { fileFilter: (req, file, cb) => {
+  if (file.originalname.match(/^.*\.(|pdf|jpg|webp|png|jpeg)$/))
+  cb(null, true);
+  else {
+  cb(new MulterError('LIMIT_UNEXPECTED_FILE', 'file'), false);
 }
 },
-limits: { fileSize: 3000000 },
-storage:diskStorage({
-destination: './uploads',
-filename: function (req, file, cb) {
-cb(null,Date.now()+file.originalname)
+  limits: { fileSize: 3000000 },
+  storage:diskStorage({
+  destination: './uploads',
+  filename: function (req, file, cb) {
+  cb(null,Date.now()+file.originalname)
 },
 })
 }))
