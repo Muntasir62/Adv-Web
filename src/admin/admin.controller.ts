@@ -204,13 +204,13 @@ console.log(file.size);
 @Post('upload')
 @UseInterceptors(FileInterceptor('file',
 { fileFilter: (req, file, cb) => {
-if (file.originalname.match(/^.*\.(|pdfjpg|webp|png|jpeg)$/))
+if (file.originalname.match(/^.*\.(|pdf|jpg|webp|png|jpeg)$/))
 cb(null, true);
 else {
 cb(new MulterError('LIMIT_UNEXPECTED_FILE', 'file'), false);
 }
 },
-limits: { fileSize: 300000 },
+limits: { fileSize: 3000000 },
 storage:diskStorage({
 destination: './uploads',
 filename: function (req, file, cb) {
