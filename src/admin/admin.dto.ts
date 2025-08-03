@@ -84,6 +84,7 @@ export class CreateReviewDto {
   @IsString()
   comment: string;
 }
+// New
 export class CreateAdminDto
 {
   @IsString()

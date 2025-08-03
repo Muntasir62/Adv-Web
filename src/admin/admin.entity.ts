@@ -13,6 +13,7 @@ export class AdminEntity
     password : string;
 }
     */
+   // New
    @Entity('admin')
    export class NewAdmin
    {

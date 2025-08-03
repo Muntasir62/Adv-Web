@@ -238,6 +238,8 @@ res.sendFile(name,{ root: './uploads' })
     return this.adminService.getAdmin(adminId);
   }
     */
+
+  // New
    @Post('newadmin')
    @UsePipes(new ValidationPipe())
    createAdmin(@Body() createAdminDto : CreateAdminDto): Promise<NewAdmin>
