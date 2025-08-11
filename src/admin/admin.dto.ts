@@ -1,7 +1,9 @@
-import { IsEmail, IsString, IsInt, IsOptional, IsNumber, Min, Matches, Length, IsIn } from 'class-validator';
+import { IsEmail, IsString, IsInt, IsOptional, IsNumber, Min, Matches, Length, IsIn, minLength, min, isInt, MinLength, IsNotEmpty, IsEnum } from 'class-validator';
 
-/*export class CreateAdminDto {
+export class CreateAdminDto {
+  
    @Matches(/^[a-zA-Z]+$/, { message: 'Name must contain only alphabets' })
+  @MinLength(3)
   name: string;
 
   @IsEmail()
@@ -11,7 +13,10 @@ import { IsEmail, IsString, IsInt, IsOptional, IsNumber, Min, Matches, Length, I
   password: string;
 
   @IsString()
-  accessLevel: string;
+   @IsEnum(['super_admin', 'moderator', 'analyst'], {
+        message: 'Access level must be one of: super_admin, moderator, analyst'
+    })
+  accessLevel: 'super_admin' | 'moderator' | 'analyst';
 }
 
 export class CreateUserDto {
@@ -24,21 +29,31 @@ export class CreateUserDto {
   @Matches(/^(?=.*[A-Z])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,}$/, { message: ' Invalid Password' })
   password: string;
 
-  @IsString()
-  role: string;
+   @IsNotEmpty()
+  @IsEnum(['learner', 'instructor']) 
+  role: 'learner' | 'instructor';
 }
-*/
+
 export class CreateCourseDto {
   @IsString()
+  @MinLength(5)
   title: string;
 
   @IsString()
+  @MinLength(10)
   description: string;
 
   @Matches(/^0[0-9]*$/, { message: 'instructorId must be an integer starting with 0' })
   instructorId: string;
+  @IsOptional()
+  @IsInt()
+  adminId? : number;
 }
-
+export class RejectCourseDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
 export class CreateReportDto {
   @IsInt()
   reportedUserId: number;
@@ -85,6 +100,7 @@ export class CreateReviewDto {
   comment: string;
 }
 // New
+/*
 export class CreateAdminDto
 {
   @IsString()
@@ -101,3 +117,4 @@ export class UpdateAdminStatusDto
   @IsIn(['active', 'inactive'])
   status : 'active' | 'inactive';
 }
+  */

@@ -1,19 +1,22 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UploadedFile, UseInterceptors, UsePipes, ValidationPipe } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import {
-  //CreateAdminDto,
-  //CreateUserDto,
+  CreateAdminDto,
+  CreateUserDto,
   CreateCourseDto,
   CreateReportDto,
   CreateNotificationDto,
   UpdateSettingDto,
   CreateReviewDto,
-  CreateAdminDto,
-  UpdateAdminStatusDto,
+  RejectCourseDto,
+ // CreateAdminDto,
+ // UpdateAdminStatusDto,
+ // CreateUserDto,
 } from "./admin.dto";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage, MulterError } from "multer";
-import { NewAdmin } from "./admin.entity";
+import { CourseEntity } from "./course.entity";
+
 
 @Controller('admin')
 export class AdminController
@@ -36,7 +39,7 @@ export class AdminController
   {
     return this.adminService.getId(name);
   }
-  /*@Post()
+  @Post()
    @UsePipes(new ValidationPipe())
   createAdmin(@Body() createAdminDto : CreateAdminDto)
   {
@@ -52,7 +55,7 @@ export class AdminController
   }
    @Post('users')
   @UsePipes(new ValidationPipe())
-  createUser(@Body() createDto: CreateUserDto): string
+  createUser(@Body() createDto: CreateUserDto)
   {
     console.log(createDto);
     return this.adminService.createUser(createDto);
@@ -72,47 +75,51 @@ export class AdminController
   {
     return this.adminService.verifyUser(id);
   }
-  @Post('users/:id/suspend')
-  suspendUser(@Param('id', ParseIntPipe) id: number): string
+  @Patch('users/:id/suspend')
+  suspendUser(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.suspendUser(id);
   }
   @Post('users/:id/delete')
-  deleteUser(@Param('id', ParseIntPipe) id: number): string
+  deleteUser(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.deleteUser(id);
   }
-    */
-  @Post('courses')
+    
+  @Post('courses/:adminId')
   @UsePipes(new ValidationPipe())
-  createCourse(@Body() createDto: CreateCourseDto): string
+  createCourse(@Param ('adminId', ParseIntPipe) adminId : number, @Body() CreateCourseDto : CreateCourseDto)
   {
-    console.log(createDto);
-    return this.adminService.createCourse(createDto);
+   const course = new CourseEntity();
+   course.title = CreateCourseDto.title;
+   course.description = CreateCourseDto.description;
+    course.createdAt = new Date(); 
+    course.status = 'approved'; 
+   return this.adminService.createCourse(adminId, course);
   }
-   @Get('courses')
-  getCourses() : object
+   
+  
+  @Get('courses/:adminId')
+  getCourse(@Param('adminId', ParseIntPipe) adminId: number)
   {
-    return this.adminService.getCourses();
-  }
-  @Get('courses/:id')
-  getCourse(@Param('id', ParseIntPipe) id: number)
-  {
-    return this.adminService.getCourse(id);
+    return this.adminService.getCourse(adminId);
   }
    @Post('courses/:id/approve')
   approveCourse(@Param('id', ParseIntPipe) id: number): string
   {
     return this.adminService.approveCourse(id);
   }
-   @Post('courses/:id/reject')
-  rejectCourse(@Param('id', ParseIntPipe) id: number): string
-  {
-    return this.adminService.rejectCourse(id);
+   @Patch(':adminId/courses/:courseId/reject')
+  rejectCourse(  @Param('adminId', ParseIntPipe) adminId: number,
+    @Param('courseId', ParseIntPipe) courseId: number,
+    @Body() rejectCourseDto: RejectCourseDto
+  ) {
+    return this.adminService.rejectCourse(adminId, courseId, rejectCourseDto.reason);
+  
   }
   @Post('reports')
   @UsePipes(new ValidationPipe())
-  createReport(@Body() createDto: CreateReportDto): string
+  createReport(@Body() createDto: CreateReportDto)
   {
     console.log(createDto);
     return this.adminService.createReport(createDto);
@@ -127,8 +134,8 @@ export class AdminController
   {
     return this.adminService.resolveReport(id);
   }
-  @Post('reports/:id/dismiss')
-  dismissReport(@Param('id', ParseIntPipe) id: number): string
+  @Patch('reports/:id/dismiss')
+  dismissReport(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.dismissReport(id);
   }
@@ -166,7 +173,7 @@ export class AdminController
   }
   @Post('reviews')
   @UsePipes(new ValidationPipe())
-  createReview(@Body() createDto: CreateReviewDto): string
+  createReview(@Body() createDto: CreateReviewDto)
   {
     console.log(createDto);
     return this.adminService.createReview(createDto);
@@ -177,7 +184,7 @@ export class AdminController
     return this.adminService.getReviews();
   }
    @Post('reviews/:id/delete')
-  deleteReview(@Param('id', ParseIntPipe) id: number): string
+  deleteReview(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.deleteReview(id);
   }
@@ -188,7 +195,7 @@ export class AdminController
   }
   @Post('notifications')
   @UsePipes(new ValidationPipe())
-  createNotification(@Body() createDto: CreateNotificationDto): string
+  createNotification(@Body() createDto: CreateNotificationDto)
   {
     console.log(createDto);
     return this.adminService.createNotification(createDto);
@@ -232,14 +239,15 @@ console.log(file.destination)
 getImages(@Param('name') name, @Res() res) {
 res.sendFile(name,{ root: './uploads' })
 }
-/*@Get(':id')
+@Get(':id')
   getAdmin(@Param('id', ParseIntPipe) adminId : number)
   {
     return this.adminService.getAdmin(adminId);
   }
-    */
+    
 
   // New
+  /*
    @Post('newadmin')
    @UsePipes(new ValidationPipe())
    createAdmin(@Body() createAdminDto : CreateAdminDto): Promise<NewAdmin>
@@ -263,6 +271,7 @@ res.sendFile(name,{ root: './uploads' })
    {
     return this.adminService.getOlderAdmins();
    }
+    */
 
 
 

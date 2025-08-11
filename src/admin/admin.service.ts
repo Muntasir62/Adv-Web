@@ -1,16 +1,27 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import {  CreateAdminDto, CreateCourseDto, CreateNotificationDto, CreateReportDto, CreateReviewDto,  UpdateAdminStatusDto,  UpdateSettingDto } from "./admin.dto";
+import {   CreateAdminDto, CreateCourseDto, CreateNotificationDto, CreateReportDto, CreateReviewDto,  CreateUserDto,  UpdateSettingDto } from "./admin.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import {  MoreThan, Repository } from "typeorm";
-import { NewAdmin } from "./admin.entity";
+import { AdminEntity } from "./admin.entity";
+import { CourseEntity } from "./course.entity";
+import { UserEntity } from "./user.entity";
+import { ReportEntity } from "./report.enity";
+import { NotificationEntity } from "./notification.entity";
+import { ReviewEntity } from "./review.entity";
+
 
 
 @Injectable()
 export class AdminService
 {
-  constructor(@InjectRepository(NewAdmin) private adminRepository :Repository<NewAdmin>) {}
-   // private readonly validAccessLevels = ['super_admin', 'moderator', 'analyst'];
-    //private readonly validUserRoles = ['learner', 'instructor'];
+  constructor(@InjectRepository(AdminEntity) private adminRepository : Repository<AdminEntity>, @InjectRepository(CourseEntity)
+    private courseRepository: Repository<CourseEntity>,   @InjectRepository(UserEntity) private userRepository: Repository<UserEntity>, // Inject new repository
+    @InjectRepository(ReportEntity) private reportRepository: Repository<ReportEntity>, // Inject new repository
+    @InjectRepository(NotificationEntity) private notificationRepository: Repository<NotificationEntity>, // Inject new repository
+    @InjectRepository(ReviewEntity) private reviewRepository: Repository<ReviewEntity>,
+  ) {}
+    private readonly validAccessLevels = ['super_admin', 'moderator', 'analyst'];
+    private readonly validUserRoles = ['learner', 'instructor'];
     private readonly validCourseStatus = ['pending', 'approved', 'rejected'];
     private readonly validReportStatus = ['pending', 'resolved', 'dismissed'];
     signIn(): string
@@ -25,16 +36,11 @@ export class AdminService
     {
         return `The given name is ${name}`;
     }
-   /* createAdmin (createAdminDto : CreateAdminDto): string
+   async createAdmin (createAdminDto : CreateAdminDto): Promise <AdminEntity>
     {
-        console.log('Name :', createAdminDto.name);
-        if (!this.validAccessLevels.includes(createAdminDto.accessLevel))
-        {
-            throw new BadRequestException (`Invalid access levels`);
-
-        }
-        const {name, email} = createAdminDto;
-        return `Admin ${name} created with ${email}`;
+      
+        const admin = this.adminRepository.create(createAdminDto);
+        return this.adminRepository.save(admin);
 
     }
     getAdmin(adminId: number): string
@@ -55,22 +61,16 @@ export class AdminService
         return ` Admin added  ${name} with ${email}`;
 
     }
-     createUser (dto : CreateUserDto): string
+    async createUser (dto : CreateUserDto): Promise<UserEntity>
     {
-        console.log('Name :', dto.name);
-        console.log('Email :', dto.email);
-        if (!this.validUserRoles.includes(dto.role))
-        {
-            throw new BadRequestException (`Invalid role`);
-
-        }
-        const {name, email} = dto;
-        return `New user created with ${name} and ${email}`;
+       const newUser = this.userRepository.create(dto);
+    return this.userRepository.save(newUser);
+        
 
     }
-    getUsers(): object
+    async getUsers(): Promise<UserEntity[]>
     {
-        return [{ id: 1, name: 'Mock User', email: 'mock@example.com', role: 'learner', isActive: true, isVerified: false }];
+        return this.userRepository.find();
 
     }
      getUser(id: number): object
@@ -81,24 +81,48 @@ export class AdminService
   {
      return `User with id ${id} verified`;
   }
-  suspendUser(id : number): string
+  async suspendUser(userId : number):  Promise<UserEntity>
   {
-    return `User with id ${id} suspended`;
+    const user = await this.userRepository.findOne({where: {id : userId}});
+    if(!user)
+    {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+    user.isActive = false;
+    return this.userRepository.save(user);
   }
-  deleteUser(id: number): string
+  async deleteUser(userId: number): Promise<void> 
   {
-    return `User with id ${id} deleted`;
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found.`);
+    }
+    await this.userRepository.remove(user);
   }
-    */
-  createCourse (dto: CreateCourseDto): string
+    
+  async createCourse (adminId : number, course : CourseEntity): Promise<CourseEntity> 
   {
-    console.log('Title :', dto.title);
-    const {title} = dto;
-    return `Course ${title} created`;
+    const admin = await this.adminRepository.findOneBy({id : adminId});
+    if(!admin)
+    {
+      throw new NotFoundException('Admin not found');
+
+    }
+    course.approvedBy = admin;
+      course.createdAt = new Date(); 
+       course.status = 'approved';
+    
+    return this.courseRepository.save(course);
   }
-  getCourses(): object
+  async getCourses(adminId : number): Promise<CourseEntity[]>
   {
-    return [{ id: 1, title: 'Mock Course', description: 'Mock Description', instructorId: 1, status: 'pending' }];
+   return this.courseRepository.find(
+   {
+    where : {approvedBy: {id : adminId}},
+    relations : ['approvedBy'],
+
+   }
+  );
   }
   getCourse(id: number): object
   {
@@ -111,23 +135,36 @@ export class AdminService
     }
     return `Course with id ${id} approved`;
   }
-  rejectCourse(id: number): string
+ async rejectCourse(adminId : number, courseId : number, reason?: string):  Promise<CourseEntity>
   {
-    if (!this.validCourseStatus.includes('rejected')) {
-      throw new BadRequestException('Invalid status');
+    const admin = await this.adminRepository.findOneBy({ id: adminId });
+    if (!admin) 
+      {
+      throw new NotFoundException(`Admin with ID ${adminId} not found`);
     }
-    return `Course with id ${id} rejected`;
+     const course = await this.courseRepository.findOneBy({ id: courseId });
+    if (!course) 
+      {
+      throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
+    if(course.status === 'rejected')
+    {
+      throw new BadRequestException(`Course ${courseId} is already rejected`);
+    }
+    course.status = 'rejected';
+    course.approvedBy = admin;
+    course.rejectionReason = reason;
+    return this.courseRepository.save(course);
   }
-  createReport(dto : CreateReportDto): string
+  async createReport(dto : CreateReportDto): Promise<ReportEntity>
   {
-    console.log('Description :', dto.description);
-    const {description} = dto;
-    return `Report created : ${description}`;
+     const newReport = this.reportRepository.create(dto);
+    return this.reportRepository.save(newReport);
 
   }
-  getReports(): object
+  getReports(): Promise<ReportEntity[]> 
   {
-    return [{ id: 1, reportedUserId: 1, description: 'Mock Report', status: 'pending' }];
+    return this.reportRepository.find();
   }
   resolveReport(id: number): string
   {
@@ -136,12 +173,14 @@ export class AdminService
     }
     return `Report ${id} resolved`;
   }
-  dismissReport(id: number): string
-  {
-    if (!this.validReportStatus.includes('dismissed')) {
-      throw new BadRequestException('Invalid status');
+ async dismissReport(reportId: number): Promise<ReportEntity> 
+ {
+    const report = await this.reportRepository.findOne({ where: { id: reportId } });
+    if (!report) {
+      throw new NotFoundException(`Report with ID ${reportId} not found.`);
     }
-    return `Report ${id} dismissed`;
+    report.status = 'dismissed';
+    return this.reportRepository.save(report);
   }
   getUserGrowth(): object
   {
@@ -169,37 +208,40 @@ export class AdminService
   {
     return `Mock value for setting ${key}`;
   }
-  createReview(dto: CreateReviewDto): string
+ async createReview(dto: CreateReviewDto): Promise<ReviewEntity>
   {
-    console.log('Comment :', dto.comment);
-    const {courseId} = dto;
-    return `Review created for course ${courseId}`;
+    const newReview = this.reviewRepository.create(dto);
+    newReview.createdAt = new Date();
+    return this.reviewRepository.save(newReview);
   }
-  getReviews(): object
-  {
-    return [{ id: 1, courseId: 1, userId: 1, rating: 4, comment: 'Mock Review' }];
+   async getReviews(): Promise<ReviewEntity[]> {
+    return this.reviewRepository.find();
   }
   
-  deleteReview(id: number): string
-  {
-    return `Review ${id} deleted`;
+    async deleteReview(reviewId: number): Promise<void> 
+    {
+    const review = await this.reviewRepository.findOne({ where: { id: reviewId } });
+    if (!review) {
+      throw new NotFoundException(`Review with ID ${reviewId} not found.`);
+    }
+    await this.reviewRepository.remove(review);
   }
    getLogs(): object
   {
     return [{ id: 1, action: 'Mock action', timestamp: Date() }];
   }
-   createNotification(dto: CreateNotificationDto): string
+  async createNotification(dto: CreateNotificationDto): Promise<NotificationEntity>
   {
-    console.log('Title :', dto.title);
-    const {title} = dto;
-    return `Notification created: ${title}`;
+     const newNotification = this.notificationRepository.create(dto);
+     newNotification.timestamp = new Date();
+    return this.notificationRepository.save(newNotification);
   }
-   getNotifications(): object
+  async getNotifications(): Promise<NotificationEntity[]>
   {
-    return [{ id: 1, title: 'Mock Notification', message: 'Mock Message', recipient: 'all' }];
+    return this.notificationRepository.find();
   }
   // New
-  
+  /*
   async createAdmin(createAdminDto : CreateAdminDto) : Promise<NewAdmin>
   {
     const newAdmin = this.adminRepository.create(createAdminDto);
@@ -226,4 +268,5 @@ async getOlderAdmins(): Promise<NewAdmin[]>
 {
   return this.adminRepository.find({where : {age : MoreThan(25)},});
 }
+  */
 }
