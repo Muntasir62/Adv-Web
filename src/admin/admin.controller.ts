@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UploadedFile, UseInterceptors, UsePipes, ValidationPipe } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, SetMetadata, UploadedFile, UseGuards, UseInterceptors, UsePipes, ValidationPipe } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import {
   CreateAdminDto,
@@ -16,12 +16,19 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage, MulterError } from "multer";
 import { CourseEntity } from "./course.entity";
+import { AuthService } from "./auth.service";
+import { AdminAccessGuard } from "./admin-access.guard";
+import { AuthGuard } from '@nestjs/passport';
+
+
 
 
 @Controller('admin')
 export class AdminController
  {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Post('signup')
   signUp(): string
@@ -29,31 +36,35 @@ export class AdminController
     return this.adminService.signUp();
   }
 
+  
   @Post('signin')
-  signIn(): string
-  {
-    return this.adminService.signIn();
+  @UsePipes(new ValidationPipe())
+  async signIn(@Body() body: { email: string; password: string }) {
+    return this.authService.login(body.email, body.password);
   }
+
   @Get('query')
   getId(@Query('name') name : string): string
   {
     return this.adminService.getId(name);
   }
-  @Post()
-   @UsePipes(new ValidationPipe())
-  createAdmin(@Body() createAdminDto : CreateAdminDto)
-  {
+   @Post('create')
+  @UseGuards(AuthGuard('jwt'), AdminAccessGuard)
+  @SetMetadata('accessLevel', 'super_admin')
+  @UsePipes(new ValidationPipe())
+  createAdminSuper(@Body() createAdminDto: CreateAdminDto) {
     return this.adminService.createAdmin(createAdminDto);
   }
   
   @Post('/addadmin')
   @UsePipes(new ValidationPipe())
-  addAdmin(@Body() data : CreateAdminDto): string
+  addAdmin(@Body() data : CreateAdminDto)
   {
     console.log(data);
-    return this.adminService.addAdmin(data);
+    return this.adminService.createAdmin(data);
   }
    @Post('users')
+  @UseGuards(AuthGuard('jwt'))
   @UsePipes(new ValidationPipe())
   createUser(@Body() createDto: CreateUserDto)
   {
@@ -61,6 +72,7 @@ export class AdminController
     return this.adminService.createUser(createDto);
   }
   @Get('users')
+ @UseGuards(AuthGuard('jwt'))
   getUsers() : object
   {
   return this.adminService.getUsers();
@@ -76,17 +88,20 @@ export class AdminController
     return this.adminService.verifyUser(id);
   }
   @Patch('users/:id/suspend')
+  @UseGuards(AuthGuard('jwt'))
   suspendUser(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.suspendUser(id);
   }
-  @Post('users/:id/delete')
+  @Delete('users/:id/delete')
+ @UseGuards(AuthGuard('jwt'))
   deleteUser(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.deleteUser(id);
   }
     
   @Post('courses/:adminId')
+  @UseGuards(AuthGuard('jwt'))
   @UsePipes(new ValidationPipe())
   createCourse(@Param ('adminId', ParseIntPipe) adminId : number, @Body() CreateCourseDto : CreateCourseDto)
   {
@@ -100,9 +115,10 @@ export class AdminController
    
   
   @Get('courses/:adminId')
+ @UseGuards(AuthGuard('jwt'))
   getCourse(@Param('adminId', ParseIntPipe) adminId: number)
   {
-    return this.adminService.getCourse(adminId);
+    return this.adminService.getCourses(adminId);
   }
    @Post('courses/:id/approve')
   approveCourse(@Param('id', ParseIntPipe) id: number): string
@@ -110,6 +126,7 @@ export class AdminController
     return this.adminService.approveCourse(id);
   }
    @Patch(':adminId/courses/:courseId/reject')
+   @UseGuards(AuthGuard('jwt'))
   rejectCourse(  @Param('adminId', ParseIntPipe) adminId: number,
     @Param('courseId', ParseIntPipe) courseId: number,
     @Body() rejectCourseDto: RejectCourseDto
@@ -117,7 +134,15 @@ export class AdminController
     return this.adminService.rejectCourse(adminId, courseId, rejectCourseDto.reason);
   
   }
+  @Delete('courses/:id')
+  @UseGuards(AuthGuard('jwt'), AdminAccessGuard)
+  @SetMetadata('accessLevel', 'super_admin')
+  @UsePipes(new ValidationPipe())
+  deleteCourse(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteCourse(id);
+  }
   @Post('reports')
+  @UseGuards(AuthGuard('jwt'))
   @UsePipes(new ValidationPipe())
   createReport(@Body() createDto: CreateReportDto)
   {
@@ -125,6 +150,7 @@ export class AdminController
     return this.adminService.createReport(createDto);
   }
   @Get('reports')
+ @UseGuards(AuthGuard('jwt'))
   getReports() : object
   {
     return this.adminService.getReports();
@@ -135,6 +161,7 @@ export class AdminController
     return this.adminService.resolveReport(id);
   }
   @Patch('reports/:id/dismiss')
+  @UseGuards(AuthGuard('jwt'))
   dismissReport(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.dismissReport(id);
@@ -172,6 +199,7 @@ export class AdminController
     return this.adminService.getSetting(key);
   }
   @Post('reviews')
+  @UseGuards(AuthGuard('jwt'))
   @UsePipes(new ValidationPipe())
   createReview(@Body() createDto: CreateReviewDto)
   {
@@ -179,11 +207,13 @@ export class AdminController
     return this.adminService.createReview(createDto);
   }
    @Get('reviews')
+  @UseGuards(AuthGuard('jwt'))
   getReviews() : object
   {
     return this.adminService.getReviews();
   }
-   @Post('reviews/:id/delete')
+   @Delete('reviews/:id/delete')
+  @UseGuards(AuthGuard('jwt'))
   deleteReview(@Param('id', ParseIntPipe) id: number)
   {
     return this.adminService.deleteReview(id);
@@ -194,6 +224,7 @@ export class AdminController
     return this.adminService.getLogs();
   }
   @Post('notifications')
+  @UseGuards(AuthGuard('jwt'))
   @UsePipes(new ValidationPipe())
   createNotification(@Body() createDto: CreateNotificationDto)
   {
@@ -201,6 +232,7 @@ export class AdminController
     return this.adminService.createNotification(createDto);
   }
    @Get('notifications')
+  @UseGuards(AuthGuard('jwt'))
   getNotifications() : object
   {
     return this.adminService.getNotifications();

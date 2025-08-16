@@ -8,22 +8,27 @@ import { UserEntity } from "./user.entity";
 import { ReportEntity } from "./report.enity";
 import { NotificationEntity } from "./notification.entity";
 import { ReviewEntity } from "./review.entity";
+import * as bcrypt from 'bcrypt';
 
 
 
 @Injectable()
 export class AdminService
 {
-  constructor(@InjectRepository(AdminEntity) private adminRepository : Repository<AdminEntity>, @InjectRepository(CourseEntity)
-    private courseRepository: Repository<CourseEntity>,   @InjectRepository(UserEntity) private userRepository: Repository<UserEntity>, // Inject new repository
-    @InjectRepository(ReportEntity) private reportRepository: Repository<ReportEntity>, // Inject new repository
-    @InjectRepository(NotificationEntity) private notificationRepository: Repository<NotificationEntity>, // Inject new repository
+  constructor(@InjectRepository(AdminEntity) private adminRepository : Repository<AdminEntity>,
+   @InjectRepository(CourseEntity) private courseRepository: Repository<CourseEntity>,   @InjectRepository(UserEntity) private userRepository: Repository<UserEntity>, 
+    @InjectRepository(ReportEntity) private reportRepository: Repository<ReportEntity>, 
+    @InjectRepository(NotificationEntity) private notificationRepository: Repository<NotificationEntity>, 
     @InjectRepository(ReviewEntity) private reviewRepository: Repository<ReviewEntity>,
   ) {}
     private readonly validAccessLevels = ['super_admin', 'moderator', 'analyst'];
     private readonly validUserRoles = ['learner', 'instructor'];
     private readonly validCourseStatus = ['pending', 'approved', 'rejected'];
     private readonly validReportStatus = ['pending', 'resolved', 'dismissed'];
+    async findAdminByEmail(email : string): Promise<AdminEntity | null>
+    {
+      return this.adminRepository.findOne({where : {email} });
+    }
     signIn(): string
     {
         return 'Sign in';
@@ -38,9 +43,12 @@ export class AdminService
     }
    async createAdmin (createAdminDto : CreateAdminDto): Promise <AdminEntity>
     {
+      const salt = await bcrypt.genSalt();
+      createAdminDto.password = await bcrypt.hash(createAdminDto.password, salt);
+      const admin = this.adminRepository.create(createAdminDto);
+      return this.adminRepository.save(admin);
       
-        const admin = this.adminRepository.create(createAdminDto);
-        return this.adminRepository.save(admin);
+        
 
     }
     getAdmin(adminId: number): string
@@ -63,6 +71,8 @@ export class AdminService
     }
     async createUser (dto : CreateUserDto): Promise<UserEntity>
     {
+        const salt = await bcrypt.genSalt();
+    dto.password = await bcrypt.hash(dto.password, salt);
        const newUser = this.userRepository.create(dto);
     return this.userRepository.save(newUser);
         
@@ -124,10 +134,7 @@ export class AdminService
    }
   );
   }
-  getCourse(id: number): object
-  {
-    return { id, title: `Course ${id}`, description: `Description ${id}`, instructorId: 1, status: 'pending' };
-  }
+ 
   approveCourse(id : number): string
   {
     if (!this.validCourseStatus.includes('approved')) {
@@ -155,6 +162,13 @@ export class AdminService
     course.approvedBy = admin;
     course.rejectionReason = reason;
     return this.courseRepository.save(course);
+  }
+   async deleteCourse(id: number): Promise<void> {
+    const course = await this.courseRepository.findOne({ where: { id } });
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${id} not found.`);
+    }
+    await this.courseRepository.remove(course);
   }
   async createReport(dto : CreateReportDto): Promise<ReportEntity>
   {

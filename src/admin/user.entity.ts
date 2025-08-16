@@ -29,6 +29,6 @@ export class UserEntity {
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ default: false })
+  @Column({ default: true })
   isVerified: boolean;
 }
